@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Taller mecanico{% endblock %}</title>
+    <style>
+        :root {
+            --fondo: #ecebe7;
+            --caja: #fff;
+            --texto: #2c2c2c;
+            --marca: #c45c26;
+            --marca-oscura: #9a451c;
+            --suave: #faf7f2;
+            --linea: #e0d8ce;
+            --ok: #1b7a3d;
+            --ok-fondo: #e7f6ec;
+            --malo: #b42318;
+            --malo-fondo: #fdecea;
+            --aviso: #9a6700;
+            --aviso-fondo: #fff4d6;
+            --libre: #1b7a3d;
+            --ocupada: #b42318;
+            --bloqueada: #6b7280;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: var(--fondo);
+            color: var(--texto);
+            margin: 0;
+        }
+
+        body.admin {
+            --fondo: #e8eaed;
+            --marca: #2c3338;
+            --marca-oscura: #1c2124;
+            --suave: #f4f7fa;
+            --linea: #d5dde4;
+        }
+
+        header {
+            background: var(--marca);
+            color: #fff;
+            padding: 14px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+
+        header a { color: #fff; text-decoration: none; }
+        header nav { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+        header .marca { font-weight: bold; font-size: 18px; }
+        header .rol {
+            background: rgba(255,255,255,.15);
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+        }
+
+        main { max-width: 1100px; margin: 24px auto; padding: 0 16px 40px; }
+
+        .caja {
+            background: var(--caja);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,.08);
+        }
+
+        h1 { margin-top: 0; color: var(--marca); }
+        .subtitulo { color: #666; margin-top: -8px; }
+
+        label { display: block; margin-bottom: 4px; font-weight: bold; }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        input[type="checkbox"] { width: auto; }
+
+        button, .boton {
+            background: var(--marca);
+            color: #fff;
+            border: 0;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        button:hover, .boton:hover { background: var(--marca-oscura); }
+        .boton.secundario { background: #6b7280; }
+        .boton.ok { background: #1b7a3d; }
+        .boton.peligro { background: #b42318; }
+        .boton.whatsapp { background: #25d366; }
+
+        .mensajes { list-style: none; padding: 0; }
+        .mensajes li { padding: 10px 12px; border-radius: 8px; margin-bottom: 10px; }
+        .ok { background: var(--ok-fondo); color: var(--ok); }
+        .error, .malo { background: var(--malo-fondo); color: var(--malo); }
+        .aviso { background: var(--aviso-fondo); color: var(--aviso); }
+
+        .calendario {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(120px, 1fr));
+            gap: 10px;
+            overflow-x: auto;
+        }
+
+        .dia {
+            background: var(--suave);
+            border: 1px solid var(--linea);
+            border-radius: 10px;
+            padding: 10px;
+            min-width: 120px;
+        }
+
+        .dia h3 { margin: 0 0 8px; font-size: 14px; color: var(--marca); }
+        .dia .fecha { font-size: 12px; color: #666; margin-bottom: 10px; }
+
+        .slot {
+            display: block;
+            width: 100%;
+            margin-bottom: 6px;
+            padding: 8px 6px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 13px;
+            text-decoration: none;
+            border: 0;
+        }
+
+        .slot.libre { background: var(--ok-fondo); color: var(--ok); }
+        .slot.ocupada { background: var(--malo-fondo); color: var(--malo); cursor: default; }
+        .slot.bloqueada { background: #eceff1; color: #546e7a; cursor: default; }
+        .slot.cerrado { color: #888; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid var(--linea); padding: 10px; text-align: left; }
+        th { background: var(--marca); color: #fff; }
+        tr:nth-child(even) { background: var(--suave); }
+
+        .acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+        .pie-form { margin: 0; }
+        .muted { color: #666; font-size: 14px; }
+        .slot.deshabilitada {
+            background: #f3efe8;
+            color: #8a7d70;
+            cursor: not-allowed;
+        }
+
+        .modal-fondo {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(44, 44, 44, .45);
+            z-index: 20;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .modal-fondo.abierto { display: flex; }
+
+        .modal {
+            background: #fff;
+            width: min(420px, 100%);
+            border-radius: 14px;
+            padding: 22px;
+            box-shadow: 0 16px 40px rgba(0,0,0,.2);
+        }
+
+        .modal h2 { margin-top: 0; color: var(--marca); }
+        .modal .acciones { margin-top: 8px; }
+
+        .semana-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 16px 0 20px;
+        }
+
+        .semana-nav .rango { font-weight: bold; color: var(--marca); }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(140px, 1fr));
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .stat {
+            background: var(--suave);
+            border: 1px solid var(--linea);
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .stat strong { display: block; font-size: 26px; color: var(--marca); }
+        .stat span { color: #666; font-size: 13px; }
+        .dia .conteo { font-size: 12px; color: var(--marca); margin-bottom: 8px; }
+    </style>
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    <header>
+        <a class="marca" href="{% url 'inicio' %}">Taller mecanico</a>
+        <nav>
+            {% if user.is_authenticated %}
+                <span class="rol">{% block rol_etiqueta %}{% endblock %}</span>
+                {% block nav %}{% endblock %}
+                <form class="pie-form" method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit">Salir</button>
+                </form>
+            {% endif %}
+        </nav>
+    </header>
+    <main>
+        {% if messages %}
+        <ul class="mensajes">
+            {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

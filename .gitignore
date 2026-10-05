@@ -1,0 +1,30 @@
+# Dependencias
+node_modules/
+vendor/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Base de datos local
+db.sqlite3
+*.sqlite3
+
+# Secretos y entorno
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+
+# Sistema y editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+dist/
+build/
+coverage/

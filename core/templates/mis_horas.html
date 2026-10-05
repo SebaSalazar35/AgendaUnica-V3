@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Mis horas · Taller mecanico{% endblock %}
+{% block rol_etiqueta %}Cliente{% endblock %}
+{% block nav %}
+<a href="{% url 'calendario' %}">Calendario</a>
+<a href="{% url 'mis_horas' %}">Mis horas</a>
+<a href="{% url 'lista' %}">Registros</a>
+{% endblock %}
+{% block content %}
+<div class="caja">
+    <h1>Mis horas en el taller</h1>
+    {% if reservas %}
+    <table>
+        <tr>
+            <th>Fecha</th>
+            <th>Patente</th>
+            <th>Servicio</th>
+            <th>Resultado</th>
+            <th></th>
+        </tr>
+        {% for item in reservas %}
+        <tr>
+            <td>
+                {% if item.registro.fecha_cita %}
+                    {{ item.registro.fecha_cita|date:"d/m/Y H:i" }}
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+            <td>{{ item.registro.patente|default:"—" }}</td>
+            <td>{{ item.registro.servicio|default:"—" }}</td>
+            <td>
+                {% if item.registro.liberada %}
+                Liberada por no-show
+                {% elif item.registro.resultado == "Aceptado" %}
+                <span class="ok">{{ item.registro.resultado }}</span>
+                {% else %}
+                <span class="malo">{{ item.registro.resultado }}</span>
+                {% endif %}
+            </td>
+            <td class="acciones">
+                {% if item.whatsapp %}
+                <a class="boton whatsapp" href="{{ item.whatsapp }}" target="_blank" rel="noopener">WhatsApp</a>
+                {% endif %}
+                {% if item.registro.resultado == "Aceptado" and not item.registro.liberada %}
+                <form class="pie-form" method="post" action="{% url 'cancelar_propia' item.registro.pk %}">
+                    {% csrf_token %}
+                    <button class="boton secundario" type="submit">Liberar hora</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="muted">Aun no tienes horas en el taller.</p>
+    {% endif %}
+</div>
+{% endblock %}

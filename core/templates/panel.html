@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Agenda · Taller mecanico{% endblock %}
+{% block body_class %}admin{% endblock %}
+{% block rol_etiqueta %}Administrador{% endblock %}
+{% block nav %}
+<a href="{% url 'panel' %}">Agenda</a>
+<a href="{% url 'horarios' %}">Horarios</a>
+<a href="{% url 'lista' %}">Registros</a>
+{% endblock %}
+{% block content %}
+<div class="caja">
+    <h1>Agenda del taller</h1>
+    <p class="subtitulo">Muevete entre semanas para ver cuantos vehiculos atiendes. Las horas tomadas se bloquean solas.</p>
+
+    <div class="semana-nav">
+        <a class="boton secundario" href="{% url 'panel' %}?semana={{ semana_anterior|date:'Y-m-d' }}">Semana anterior</a>
+        <div class="rango">
+            {{ stats.inicio|date:"d/m/Y" }} — {{ stats.fin|date:"d/m/Y" }}
+        </div>
+        <div class="acciones">
+            <a class="boton" href="{% url 'panel' %}?semana={{ semana_actual|date:'Y-m-d' }}">Hoy</a>
+            <a class="boton secundario" href="{% url 'panel' %}?semana={{ semana_siguiente|date:'Y-m-d' }}">Semana siguiente</a>
+        </div>
+    </div>
+
+    <div class="stats">
+        <div class="stat">
+            <strong>{{ stats.atendidas }}</strong>
+            <span>Vehiculos atendidos / agendados</span>
+        </div>
+        <div class="stat">
+            <strong>{{ stats.no_show }}</strong>
+            <span>Horas liberadas por no-show</span>
+        </div>
+        <div class="stat">
+            <strong>{{ stats.total }}</strong>
+            <span>Total de fichas de la semana</span>
+        </div>
+    </div>
+
+    <div class="calendario">
+        {% for dia in semana %}
+        <section class="dia">
+            <h3>{{ dia.nombre }}</h3>
+            <div class="fecha">{{ dia.fecha|date:"d/m" }}</div>
+            <div class="conteo">{{ dia.atendidas }} vehiculo{{ dia.atendidas|pluralize }}</div>
+            {% if dia.cerrado %}
+            <p class="slot cerrado">Cerrado</p>
+            {% endif %}
+            {% for slot in dia.horas %}
+                {% if slot.estado == "libre" %}
+                <form class="pie-form" method="post" action="{% url 'bloquear_hora' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="semana" value="{{ inicio_semana|date:'Y-m-d' }}">
+                    <input type="hidden" name="fecha" value="{{ dia.fecha|date:'Y-m-d' }}">
+                    <input type="hidden" name="hora" value="{{ slot.hora|time:'H:i' }}">
+                    <input type="hidden" name="motivo" value="Bloqueo manual">
+                    <button class="slot libre" type="submit">{{ slot.hora|time:"H:i" }} libre · bloquear</button>
+                </form>
+                {% elif slot.estado == "ocupada" %}
+                <form class="pie-form" method="post" action="{% url 'liberar' slot.reserva.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="semana" value="{{ inicio_semana|date:'Y-m-d' }}">
+                    <button class="slot ocupada" type="submit" title="{{ slot.reserva.nombre }}">
+                        {{ slot.hora|time:"H:i" }} {{ slot.reserva.patente|default:slot.reserva.nombre }} · liberar
+                    </button>
+                </form>
+                {% else %}
+                <form class="pie-form" method="post" action="{% url 'desbloquear_hora' slot.bloqueo.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="semana" value="{{ inicio_semana|date:'Y-m-d' }}">
+                    <button class="slot bloqueada" type="submit">
+                        {{ slot.hora|time:"H:i" }} bloqueada · quitar
+                    </button>
+                </form>
+                {% endif %}
+            {% endfor %}
+        </section>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="caja" style="margin-top:20px;">
+    <h1>Registro de atenciones</h1>
+    <p class="subtitulo">Cuantos vehiculos quedaron agendados en cada semana, y cuantos no se presentaron.</p>
+    <table>
+        <tr>
+            <th>Semana</th>
+            <th>Vehiculos</th>
+            <th>No-show</th>
+            <th>Total</th>
+            <th></th>
+        </tr>
+        {% for fila in historial %}
+        <tr {% if fila.actual %}style="font-weight:bold"{% endif %}>
+            <td>{{ fila.inicio|date:"d/m" }} — {{ fila.fin|date:"d/m/Y" }}</td>
+            <td>{{ fila.atendidas }}</td>
+            <td>{{ fila.no_show }}</td>
+            <td>{{ fila.total }}</td>
+            <td>
+                <a href="{% url 'panel' %}?semana={{ fila.inicio|date:'Y-m-d' }}">Ver</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<div class="caja" style="margin-top:20px;">
+    <h1>Horas de esta semana</h1>
+    {% if reservas %}
+    <table>
+        <tr>
+            <th>Cliente</th>
+            <th>Patente</th>
+            <th>Servicio</th>
+            <th>Hora</th>
+            <th>Inasistencias</th>
+            <th></th>
+        </tr>
+        {% for reserva in reservas %}
+        <tr>
+            <td>{{ reserva.nombre }}</td>
+            <td>{{ reserva.patente|default:"—" }}</td>
+            <td>{{ reserva.servicio|default:"—" }}</td>
+            <td>{{ reserva.fecha_cita|date:"d/m/Y H:i" }}</td>
+            <td>{{ reserva.inasistencias }}</td>
+            <td>
+                <form class="pie-form" method="post" action="{% url 'liberar' reserva.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="semana" value="{{ inicio_semana|date:'Y-m-d' }}">
+                    <button class="boton peligro" type="submit">Liberar por no-show</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="muted">No hay horas aceptadas en esta semana.</p>
+    {% endif %}
+</div>
+{% endblock %}

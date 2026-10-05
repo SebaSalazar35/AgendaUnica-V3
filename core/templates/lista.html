@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Registros · Taller mecanico{% endblock %}
+{% block rol_etiqueta %}{{ user.username }}{% endblock %}
+{% block nav %}
+<a href="{% url 'lista' %}">Registros</a>
+{% if puede_crear %}<a href="{% url 'crear' %}">Crear</a>{% endif %}
+{% if es_admin %}<a href="{% url 'panel' %}">Agenda</a>{% endif %}
+{% if es_cliente %}<a href="{% url 'calendario' %}">Calendario</a>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="caja">
+    <h1>Registros</h1>
+    <p class="subtitulo">Lista leida desde SQLite. Lo eliminado no se borra: solo se oculta.</p>
+    {% if puede_crear %}
+    <p><a class="boton" href="{% url 'crear' %}">Crear registro</a></p>
+    {% endif %}
+    {% if registros %}
+    <table>
+        <tr>
+            <th>Nombre</th>
+            <th>Patente</th>
+            <th>Inasistencias</th>
+            <th>Resultado</th>
+            <th>Fecha</th>
+            {% if puede_editar %}<th></th>{% endif %}
+        </tr>
+        {% for r in registros %}
+        <tr>
+            <td>{{ r.nombre }}</td>
+            <td>{{ r.patente|default:"—" }}</td>
+            <td>{{ r.inasistencias }}</td>
+            <td>{{ r.resultado }}</td>
+            <td>{{ r.fecha|date:"d/m/Y H:i" }}</td>
+            {% if puede_editar %}
+            <td class="acciones">
+                <a class="boton" href="{% url 'editar' r.pk %}">Editar</a>
+                <a class="boton peligro" href="{% url 'eliminar' r.pk %}">Eliminar</a>
+            </td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="muted">Aun no hay registros.</p>
+    {% endif %}
+</div>
+{% endblock %}

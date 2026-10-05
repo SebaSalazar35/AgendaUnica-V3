@@ -1,0 +1,143 @@
+﻿Evidencia de pruebas API ES3 - 2026-10-04 23:19
+
+==================================================================
+1. Listar sin token
+Esperado: 401 Unauthorized
+$ curl -X GET http://127.0.0.1:8000/api/registros/
+HTTP/1.1 401 Unauthorized
+{"detail":"Las credenciales de autenticación no se proveyeron."}
+
+==================================================================
+2. Pedir token (admin)
+Esperado: 200 OK con access y refresh
+$ curl -X POST -H "Content-Type: application/json" -d '{"username": "admin", "password": "********"}' http://127.0.0.1:8000/api/token/
+HTTP/1.1 200 OK
+{"refresh":"eyJhbGciOiJI...","access":"eyJhbGciOiJI..."}
+
+
+==================================================================
+3. Pedir token con clave mala
+Esperado: 401 Unauthorized
+$ curl -X POST -H "Content-Type: application/json" -d '{"username": "admin", "password": "clave-mala"}' http://127.0.0.1:8000/api/token/
+HTTP/1.1 401 Unauthorized
+{"detail":"Usuario o contrasena incorrectos."}
+
+==================================================================
+4. Listar con token (paginado de a 10)
+Esperado: 200 OK
+$ curl -X GET -H "Authorization: Bearer eyJhbGciOiJI..." http://127.0.0.1:8000/api/registros/
+HTTP/1.1 200 OK
+{"count":7,"next":null,"previous":null,"results":[{"id":7,"nombre":"sebastian","telefono":"","patente":"","servicio":"","inasistencias":1,"resultado":"Rechazado: no quedan cupos libres","fecha":"2026-10-04T23:19:03.496114-03:00","fecha_cita":null},{"id":6,"nombre":"Dato malo","telefono":"","patente":"","servicio":"","inasistencias":-1,"resultado":"Error: cantidad de inasistencias invalida","fecha":"2026-10-04T23:19:03.489026-03:00","fecha_cita":null},{"id":5,"nombre":"Pablo Diaz","telefono":"","patente":"","servicio":"","inasistencias":0,"resultado":"Rechazado: no quedan cupos libres","fecha":"2026-10-04T23:19:03.483056-03:00","fecha_cita":null},{"id":4,"nombre":"Elena Rios","telefono":"","patente":"","servicio":"","inasistencias":1,"resultado":"Aceptado","fecha":"2026-10-04T23:19:03.476297-03:00","fecha_cita":null},{"id":3,"nombre":"Ana Soto","telefono":"","patente":"","servicio":"","inasistencias":0,"resultado":"Aceptado","fecha":"2026-10-04T23:19:03.469921-03:00","fecha_cita":null},{"id":2,"nombre":"Luis Perez","telefono":"","patente":"","servicio":"","inasistencias":4,"resultado":"Rechazado: el cliente acumula demasiados no-show","fecha":"2026-10-04T23:19:03.463096-03:00","fecha_cita":null},{"id":1,"nombre":"Maria Gonzalez","telefono":"","patente":"","servicio":"","inasistencias":0,"resultado":"Aceptado","fecha":"2026-10-04T23:19:03.455848-03:00","fecha_cita":null}]}
+
+==================================================================
+5. Crear registro valido (rol normal)
+Esperado: 201 Created, resultado lo decide decidir()
+$ curl -X POST -H "Authorization: Bearer eyJhbGciOiJI..." -H "Content-Type: application/json" -d '{"nombre": "Pedro Rojas", "patente": "BCDF23", "servicio": "Cambio de aceite", "inasistencias": 0}' http://127.0.0.1:8000/api/registros/
+HTTP/1.1 201 Created
+{"id":8,"nombre":"Pedro Rojas","telefono":"","patente":"BCDF23","servicio":"Cambio de aceite","inasistencias":0,"resultado":"Rechazado: no quedan cupos libres","fecha":"2026-10-04T23:19:07.874444-03:00","fecha_cita":null}
+
+==================================================================
+6. Intentar fijar resultado desde el cliente
+Esperado: 201 Created, pero resultado lo ignora (read_only) y aplica la regla
+$ curl -X POST -H "Authorization: Bearer eyJhbGciOiJI..." -H "Content-Type: application/json" -d '{"nombre": "Tramposo", "inasistencias": 4, "resultado": "Aceptado"}' http://127.0.0.1:8000/api/registros/
+HTTP/1.1 201 Created
+{"id":9,"nombre":"Tramposo","telefono":"","patente":"","servicio":"","inasistencias":4,"resultado":"Rechazado: el cliente acumula demasiados no-show","fecha":"2026-10-04T23:19:07.939868-03:00","fecha_cita":null}
+
+==================================================================
+7. Crear con datos invalidos
+Esperado: 400 Bad Request con mensajes por campo
+$ curl -X POST -H "Authorization: Bearer eyJhbGciOiJI..." -H "Content-Type: application/json" -d '{"nombre": "", "patente": "XX", "inasistencias": -1}' http://127.0.0.1:8000/api/registros/
+HTTP/1.1 400 Bad Request
+{"nombre":["Este campo no puede estar en blanco."],"patente":["La patente no es valida. Usa ABCD12 o AB1234."],"inasistencias":["Las inasistencias no pueden ser negativas."]}
+
+==================================================================
+8. Ver uno
+Esperado: 200 OK
+$ curl -X GET -H "Authorization: Bearer eyJhbGciOiJI..." http://127.0.0.1:8000/api/registros/8/
+HTTP/1.1 200 OK
+{"id":8,"nombre":"Pedro Rojas","telefono":"","patente":"BCDF23","servicio":"Cambio de aceite","inasistencias":0,"resultado":"Rechazado: no quedan cupos libres","fecha":"2026-10-04T23:19:07.874444-03:00","fecha_cita":null}
+
+==================================================================
+9. Editar un campo con PATCH (admin)
+Esperado: 200 OK
+$ curl -X PATCH -H "Authorization: Bearer eyJhbGciOiJI..." -H "Content-Type: application/json" -d '{"servicio": "Alineacion y balanceo"}' http://127.0.0.1:8000/api/registros/8/
+HTTP/1.1 200 OK
+{"id":8,"nombre":"Pedro Rojas","telefono":"","patente":"BCDF23","servicio":"Alineacion y balanceo","inasistencias":0,"resultado":"Rechazado: no quedan cupos libres","fecha":"2026-10-04T23:19:07.874444-03:00","fecha_cita":null}
+
+==================================================================
+10. Reemplazar con PUT (admin)
+Esperado: 200 OK
+$ curl -X PUT -H "Authorization: Bearer eyJhbGciOiJI..." -H "Content-Type: application/json" -d '{"nombre": "Pedro Rojas", "telefono": "56911112222", "patente": "BCDF23", "servicio": "Frenos", "inasistencias": 1}' http://127.0.0.1:8000/api/registros/8/
+HTTP/1.1 200 OK
+{"id":8,"nombre":"Pedro Rojas","telefono":"56911112222","patente":"BCDF23","servicio":"Frenos","inasistencias":1,"resultado":"Rechazado: no quedan cupos libres","fecha":"2026-10-04T23:19:07.874444-03:00","fecha_cita":null}
+
+==================================================================
+11. Viewer intenta crear
+Esperado: 403 Forbidden
+$ curl -X POST -H "Authorization: Bearer eyJhbGciOiJI..." -H "Content-Type: application/json" -d '{"nombre": "X", "inasistencias": 0}' http://127.0.0.1:8000/api/registros/
+HTTP/1.1 403 Forbidden
+{"detail":"Tu rol no tiene permiso para esta operacion."}
+
+==================================================================
+12. Normal intenta borrar
+Esperado: 403 Forbidden
+$ curl -X DELETE -H "Authorization: Bearer eyJhbGciOiJI..." http://127.0.0.1:8000/api/registros/8/
+HTTP/1.1 403 Forbidden
+{"detail":"Tu rol no tiene permiso para esta operacion."}
+
+==================================================================
+13. Admin borra (borrado logico)
+Esperado: 204 No Content
+$ curl -X DELETE -H "Authorization: Bearer eyJhbGciOiJI..." http://127.0.0.1:8000/api/registros/8/
+HTTP/1.1 204 No Content
+
+
+==================================================================
+14. Ver el registro borrado
+Esperado: 404 Not Found
+$ curl -X GET -H "Authorization: Bearer eyJhbGciOiJI..." http://127.0.0.1:8000/api/registros/8/
+HTTP/1.1 404 Not Found
+{"detail":"No existe un registro con ese id."}
+
+==================================================================
+15. Id que no existe
+Esperado: 404 Not Found
+$ curl -X GET -H "Authorization: Bearer eyJhbGciOiJI..." http://127.0.0.1:8000/api/registros/99999/
+HTTP/1.1 404 Not Found
+{"detail":"No existe un registro con ese id."}
+
+==================================================================
+16. Accion propia: solo aceptados
+Esperado: 200 OK
+$ curl -X GET -H "Authorization: Bearer eyJhbGciOiJI..." http://127.0.0.1:8000/api/registros/aceptados/
+HTTP/1.1 200 OK
+{"count":3,"next":null,"previous":null,"results":[{"id":4,"nombre":"Elena Rios","telefono":"","patente":"","servicio":"","inasistencias":1,"resultado":"Aceptado","fecha":"2026-10-04T23:19:03.476297-03:00","fecha_cita":null},{"id":3,"nombre":"Ana Soto","telefono":"","patente":"","servicio":"","inasistencias":0,"resultado":"Aceptado","fecha":"2026-10-04T23:19:03.469921-03:00","fecha_cita":null},{"id":1,"nombre":"Maria Gonzalez","telefono":"","patente":"","servicio":"","inasistencias":0,"resultado":"Aceptado","fecha":"2026-10-04T23:19:03.455848-03:00","fecha_cita":null}]}
+
+==================================================================
+16b. Filtrar por resultado
+Esperado: 200 OK solo con rechazados por no-show
+$ curl -X GET -H "Authorization: Bearer eyJhbGciOiJI..." http://127.0.0.1:8000/api/registros/?resultado=Rechazado:%20el%20cliente%20acumula%20demasiados%20no-show
+HTTP/1.1 200 OK
+{"count":2,"next":null,"previous":null,"results":[{"id":9,"nombre":"Tramposo","telefono":"","patente":"","servicio":"","inasistencias":4,"resultado":"Rechazado: el cliente acumula demasiados no-show","fecha":"2026-10-04T23:19:07.939868-03:00","fecha_cita":null},{"id":2,"nombre":"Luis Perez","telefono":"","patente":"","servicio":"","inasistencias":4,"resultado":"Rechazado: el cliente acumula demasiados no-show","fecha":"2026-10-04T23:19:03.463096-03:00","fecha_cita":null}]}
+
+==================================================================
+16c. Filtrar por parte del nombre
+Esperado: 200 OK
+$ curl -X GET -H "Authorization: Bearer eyJhbGciOiJI..." http://127.0.0.1:8000/api/registros/?nombre=maria
+HTTP/1.1 200 OK
+{"count":1,"next":null,"previous":null,"results":[{"id":1,"nombre":"Maria Gonzalez","telefono":"","patente":"","servicio":"","inasistencias":0,"resultado":"Aceptado","fecha":"2026-10-04T23:19:03.455848-03:00","fecha_cita":null}]}
+
+==================================================================
+17. Refrescar el token
+Esperado: 200 OK con un access nuevo
+$ curl -X POST -H "Content-Type: application/json" -d '{"refresh": "eyJhbGciOiJI..."}' http://127.0.0.1:8000/api/token/refresh/
+HTTP/1.1 200 OK
+{"access":"eyJhbGciOiJI..."}
+
+==================================================================
+18. Token falso o vencido
+Esperado: 401 Unauthorized
+$ curl -X GET -H "Authorization: Bearer eyJfalso.tok..." http://127.0.0.1:8000/api/registros/
+HTTP/1.1 401 Unauthorized
+{"detail":"El token no es valido o ya vencio. Pide uno nuevo en /api/token/ o /api/token/refresh/."}
+

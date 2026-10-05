@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Horarios · Taller mecanico{% endblock %}
+{% block body_class %}admin{% endblock %}
+{% block rol_etiqueta %}Administrador{% endblock %}
+{% block nav %}
+<a href="{% url 'panel' %}">Agenda</a>
+<a href="{% url 'horarios' %}">Horarios</a>
+<a href="{% url 'lista' %}">Registros</a>
+{% endblock %}
+{% block content %}
+<div class="caja">
+    <h1>Horarios del taller</h1>
+    <p class="subtitulo">Aqui defines que dias abre el taller y cada cuanto hay un cupo para recibir un vehiculo.</p>
+    <form method="post">
+        {% csrf_token %}
+        <table>
+            <tr>
+                <th>Dia</th>
+                <th>Abre</th>
+                <th>Desde</th>
+                <th>Hasta</th>
+                <th>Minutos por hora</th>
+            </tr>
+            {% for fila in filas %}
+            <tr>
+                <td>{{ fila.nombre }}</td>
+                <td>
+                    <input type="checkbox" name="activo_{{ fila.dia }}" {% if fila.horario.activo or not fila.horario %}checked{% endif %}>
+                </td>
+                <td>
+                    <input type="time" name="inicio_{{ fila.dia }}" value="{{ fila.horario.hora_inicio|time:'H:i'|default:'09:00' }}">
+                </td>
+                <td>
+                    <input type="time" name="fin_{{ fila.dia }}" value="{{ fila.horario.hora_fin|time:'H:i'|default:'18:00' }}">
+                </td>
+                <td>
+                    <input type="number" name="intervalo_{{ fila.dia }}" min="15" step="15" value="{{ fila.horario.intervalo_minutos|default:60 }}">
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        <p>
+            <button type="submit">Guardar horarios</button>
+        </p>
+    </form>
+</div>
+{% endblock %}

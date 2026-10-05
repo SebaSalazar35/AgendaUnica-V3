@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Entrar · Taller mecanico{% endblock %}
+{% block content %}
+<div class="caja" style="max-width:420px;margin:40px auto;">
+    <h1>Taller mecanico</h1>
+    <p class="subtitulo">Cada rol ve algo distinto: admin, normal, viewer o cliente.</p>
+    <form method="post">
+        {% csrf_token %}
+        <label for="username">Usuario</label>
+        <input id="username" name="username" required>
+
+        <label for="password">Contrasena</label>
+        <input id="password" type="password" name="password" required>
+
+        <button type="submit">Entrar</button>
+    </form>
+    <p class="muted">Si eres cliente nuevo, <a href="{% url 'registro' %}">crea tu cuenta</a>.</p>
+</div>
+{% endblock %}

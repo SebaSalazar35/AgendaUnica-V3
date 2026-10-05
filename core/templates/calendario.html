@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}Horas · Taller mecanico{% endblock %}
+{% block rol_etiqueta %}Cliente{% endblock %}
+{% block nav %}
+<a href="{% url 'calendario' %}">Calendario</a>
+<a href="{% url 'mis_horas' %}">Mis horas</a>
+<a href="{% url 'lista' %}">Registros</a>
+{% endblock %}
+{% block content %}
+<div class="caja">
+    <h1>Reserva tu hora en el taller</h1>
+    <p class="subtitulo">Toca un cupo libre para revision, frenos, aceite u otro servicio. Solo una hora vigente a la vez.</p>
+    {% if reserva_actual %}
+    <p class="aviso" style="padding:10px 12px;border-radius:8px;">
+        Ya tienes hora el {{ reserva_actual.fecha_cita|date:"d/m/Y H:i" }}.
+        Liberarla si quieres tomar otra.
+        <form class="pie-form" method="post" action="{% url 'cancelar_propia' reserva_actual.pk %}" style="display:inline;">
+            {% csrf_token %}
+            <button class="boton secundario" type="submit">Liberar mi hora</button>
+        </form>
+    </p>
+    {% endif %}
+    <div class="calendario">
+        {% for dia in semana %}
+        <section class="dia">
+            <h3>{{ dia.nombre }}</h3>
+            <div class="fecha">{{ dia.fecha|date:"d/m" }}</div>
+            {% if dia.cerrado %}
+            <p class="slot cerrado">Cerrado</p>
+            {% endif %}
+            {% for slot in dia.horas %}
+                {% if slot.estado == "libre" and reserva_actual %}
+                <span class="slot deshabilitada">{{ slot.hora|time:"H:i" }} ocupas otra</span>
+                {% elif slot.estado == "libre" %}
+                <button
+                    type="button"
+                    class="slot libre abrir-modal"
+                    data-fecha="{{ dia.fecha|date:'Y-m-d' }}"
+                    data-hora="{{ slot.hora|time:'H:i' }}"
+                    data-texto="{{ dia.nombre }} {{ dia.fecha|date:'d/m/Y' }} a las {{ slot.hora|time:'H:i' }}"
+                >
+                    {{ slot.hora|time:"H:i" }} libre
+                </button>
+                {% elif slot.estado == "ocupada" %}
+                <span class="slot ocupada">{{ slot.hora|time:"H:i" }} tomada</span>
+                {% else %}
+                <span class="slot bloqueada">{{ slot.hora|time:"H:i" }} bloqueada</span>
+                {% endif %}
+            {% endfor %}
+        </section>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="modal-reserva" class="modal-fondo" {% if agendada %}style="display:none"{% endif %}>
+    <div class="modal">
+        <h2>Pedir hora en el taller</h2>
+        <p id="modal-texto" class="subtitulo"></p>
+        <form method="post" action="{% url 'reservar' %}">
+            {% csrf_token %}
+            <input type="hidden" name="fecha" id="modal-fecha">
+            <input type="hidden" name="hora" id="modal-hora">
+
+            <label for="nombre">Nombre</label>
+            <input id="nombre" name="nombre" value="{{ nombre }}" required>
+
+            <label for="patente">Patente del vehiculo</label>
+            <input
+                id="patente"
+                name="patente"
+                placeholder="ABCD12 o AB1234"
+                maxlength="10"
+                required
+                autocomplete="off"
+                spellcheck="false"
+                style="text-transform:uppercase"
+            >
+            <p id="patente-ayuda" class="muted">Se escribe en mayuscula. Formato: ABCD12 o AB1234.</p>
+
+            <label for="servicio">Que necesita el auto</label>
+            <select id="servicio" name="servicio">
+                <option value="Revision general">Revision general</option>
+                <option value="Cambio de aceite">Cambio de aceite</option>
+                <option value="Frenos">Frenos</option>
+                <option value="Neumaticos">Neumaticos</option>
+                <option value="Diagnostico">Diagnostico</option>
+                <option value="Otro">Otro</option>
+            </select>
+
+            <label for="telefono">WhatsApp</label>
+            <input id="telefono" name="telefono" value="{{ telefono }}" placeholder="56911111111">
+
+            <div class="acciones">
+                <button type="submit">Agendar en el taller</button>
+                <button type="button" class="boton secundario" id="cerrar-modal">Volver</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if agendada %}
+<div id="modal-ok" class="modal-fondo abierto">
+    <div class="modal">
+        <h2>Hora aceptada</h2>
+        <p>El taller ya te anoto el {{ agendada.fecha_cita|date:"d/m/Y H:i" }}{% if agendada.patente %} · {{ agendada.patente }}{% endif %}.</p>
+        {% if whatsapp %}
+        <p>Confirmala por WhatsApp para que el mecanico te tenga presente.</p>
+        <div class="acciones">
+            <a class="boton whatsapp" href="{{ whatsapp }}" target="_blank" rel="noopener">Confirmar por WhatsApp</a>
+            <a class="boton secundario" href="{% url 'calendario' %}">Cerrar</a>
+        </div>
+        {% else %}
+        <a class="boton secundario" href="{% url 'calendario' %}">Cerrar</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<script>
+    const fondo = document.getElementById("modal-reserva");
+    const texto = document.getElementById("modal-texto");
+    const campoFecha = document.getElementById("modal-fecha");
+    const campoHora = document.getElementById("modal-hora");
+
+    document.querySelectorAll(".abrir-modal").forEach((boton) => {
+        boton.addEventListener("click", () => {
+            campoFecha.value = boton.dataset.fecha;
+            campoHora.value = boton.dataset.hora;
+            texto.textContent = boton.dataset.texto;
+            fondo.classList.add("abierto");
+        });
+    });
+
+    document.getElementById("cerrar-modal").addEventListener("click", () => {
+        fondo.classList.remove("abierto");
+    });
+
+    fondo.addEventListener("click", (evento) => {
+        if (evento.target === fondo) {
+            fondo.classList.remove("abierto");
+        }
+    });
+
+    const campoPatente = document.getElementById("patente");
+    const ayudaPatente = document.getElementById("patente-ayuda");
+    const formReserva = campoPatente.closest("form");
+
+    function normalizarPatente(valor) {
+        return valor.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    }
+
+    function patenteValida(valor) {
+        return /^[A-Z]{4}\d{2}$/.test(valor) || /^[A-Z]{2}\d{4}$/.test(valor);
+    }
+
+    campoPatente.addEventListener("input", () => {
+        const actual = normalizarPatente(campoPatente.value);
+        campoPatente.value = actual;
+        if (actual === "") {
+            ayudaPatente.textContent = "Se escribe en mayuscula. Formato: ABCD12 o AB1234.";
+            ayudaPatente.className = "muted";
+        } else if (patenteValida(actual)) {
+            ayudaPatente.textContent = "Patente valida.";
+            ayudaPatente.className = "muted";
+        } else {
+            ayudaPatente.textContent = "Patente invalida. Ejemplos: ABCD12 o AB1234.";
+            ayudaPatente.className = "malo";
+        }
+    });
+
+    formReserva.addEventListener("submit", (evento) => {
+        const actual = normalizarPatente(campoPatente.value);
+        campoPatente.value = actual;
+        if (!patenteValida(actual)) {
+            evento.preventDefault();
+            ayudaPatente.textContent = "Patente invalida. Ejemplos: ABCD12 o AB1234.";
+            ayudaPatente.className = "malo";
+            campoPatente.focus();
+        }
+    });
+</script>
+{% endblock %}

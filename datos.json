@@ -1,0 +1,37 @@
+[
+  {
+    "nombre": "Maria Gonzalez",
+    "inasistencias": 0,
+    "estado": "Aceptado"
+  },
+  {
+    "nombre": "Luis Perez",
+    "inasistencias": 4,
+    "estado": "Rechazado: el cliente acumula demasiados no-show"
+  },
+  {
+    "nombre": "Ana Soto",
+    "inasistencias": 0,
+    "estado": "Aceptado"
+  },
+  {
+    "nombre": "Elena Rios",
+    "inasistencias": 1,
+    "estado": "Aceptado"
+  },
+  {
+    "nombre": "Pablo Diaz",
+    "inasistencias": 0,
+    "estado": "Rechazado: no quedan cupos libres"
+  },
+  {
+    "nombre": "Dato malo",
+    "inasistencias": -1,
+    "estado": "Error: cantidad de inasistencias invalida"
+  },
+  {
+    "nombre": "sebastian",
+    "inasistencias": 1,
+    "estado": "Rechazado: no quedan cupos libres"
+  }
+]
